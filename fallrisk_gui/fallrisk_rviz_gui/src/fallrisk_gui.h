@@ -83,6 +83,8 @@ private Q_SLOTS:
     void setCurrentTool(int btnID);
 
 private:
+//rviz APIs
+
   rviz::VisualizationManager* manager_;
   rviz::VisualizationManager* mapManager_;
 
@@ -107,7 +109,7 @@ private:
   rviz::Tool* setInitialPoseTool_;
 
 private:
-
+//ros
   ros::NodeHandle nh_;
   ros::Publisher moveBaseCmdPub;
   ros::Subscriber centerDistSub;
@@ -117,15 +119,17 @@ private:
   image_transport::Subscriber liveVideoSub;
 
   geometry_msgs::Twist moveBaseCmd;
-  float linearVelocity;
-  float angularVelocity;
+
+
+  float linearVelocity_;
+  float angularVelocity_;
 
   void distanceSubCallback(const std_msgs::Float32::ConstPtr& msg);
   void baseStatusCheck(const kobuki_msgs::SensorState::ConstPtr& msg);
   void liveVideoCallback(const sensor_msgs::ImageConstPtr &msg);
   void setVideo(QLabel* label, cv_bridge::CvImagePtr cv_ptr);
 
-  void changeToolBtnStatus(int btnID);
+  void changeToolButtonStatus(int btnID);
 
   QString fixedFrame_;
   QString mapTopic_;

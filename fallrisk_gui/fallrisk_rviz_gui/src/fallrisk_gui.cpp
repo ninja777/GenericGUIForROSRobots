@@ -9,21 +9,12 @@ FallRiskGUI::FallRiskGUI(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::FallRiskGUI),it_(nh_)
 {
+//Setup UI components
     ui->setupUi(this);
     ui->sliderLinearVel->setValue(75);
     ui->sliderAngularVel->setValue(75);
-    ui->lbLightingItem1->setStyleSheet("QLabel { background-color : red; color : rgb(255, 255, 255); }");
-    ui->lbLightingItem2->setStyleSheet("QLabel { background-color : green; color : rgb(255, 255, 255); }");
-    ui->lbFloorsItem1->setStyleSheet("QLabel { background-color : green; color : rgb(255, 255, 255); }");
-    ui->lbFloorsItem2->setStyleSheet("QLabel { background-color : green; color : rgb(255, 255, 255); }");
-    ui->lbStairsItem1->setStyleSheet("QLabdel { background-color : green; color : rgb(255, 255, 255); }");
-    ui->lbStairsItem2->setStyleSheet("QLabel { background-color : green; color : rgb(255, 255, 255); }");
-    ui->lbStairsItem3->setStyleSheet("QLabel { background-color : red; color : rgb(255, 255, 255); }");
-    ui->lbBedroomItem1->setStyleSheet("QLabel { background-color : green; color : rgb(255, 255, 255); }");
-    ui->lbBedroomItem2->setStyleSheet("QLabel { background-color : red; color : rgb(255, 255, 255); }");
-    ui->lbBedroomItem3->setStyleSheet("QLabel { background-color : green; color : rgb(255, 255, 255); }");
-    ui->lbPetItem1->setStyleSheet("QLabel { background-color : yellow; color : rgb(255, 255, 255); }");
 
+//Initialize variables, widgets, tools and buttons
     initVariables();
     initDisplayWidgets();
     initTools();
@@ -33,6 +24,7 @@ FallRiskGUI::FallRiskGUI(QWidget *parent) :
 
 FallRiskGUI::~FallRiskGUI()
 {
+//cleanup
     delete ui;
     delete mapManager_;
     delete mapRenderPanel_;
@@ -43,6 +35,7 @@ FallRiskGUI::~FallRiskGUI()
 
 void FallRiskGUI::initVariables()
 {
+//Assign topic names to corresponding variables
     fixedFrame_ =  QString("/base_link");
     mapTopic_ = QString("/map");
     imageTopic_ = QString("/camera/rgb/image_raw"); ;
@@ -51,27 +44,33 @@ void FallRiskGUI::initVariables()
     baseSensorTopic_=QString("/mobile_base/sensors/core");
     velocityTopic_=QString("/mobile_base/commands/velocity");
 
+//Setup the publishers and subscribers
     moveBaseCmdPub = nh_.advertise<geometry_msgs::Twist>(velocityTopic_.toStdString(),1);
     centerDistSub = nh_.subscribe("/distance/image_center_dist",1,&FallRiskGUI::distanceSubCallback,this);
     baseSensorStatus = nh_.subscribe(baseSensorTopic_.toStdString(),1,&FallRiskGUI::baseStatusCheck,this);
     liveVideoSub = it_.subscribe(imageTopic_.toStdString(),1,&FallRiskGUI::liveVideoCallback,this,image_transport::TransportHints("compressed"));
 
+//Set the default speed
     setRobotVelocity();
 }
 
+
 void FallRiskGUI::initActionsConnections()
 {
+//Connect the teleop buttons
     connect(ui->btnUp, SIGNAL(clicked()), this, SLOT(moveBaseForward()));
     connect(ui->btnDown, SIGNAL(clicked()), this, SLOT(moveBaseBackward()));
     connect(ui->btnLeft, SIGNAL(clicked()), this, SLOT(moveBaseLeft()));
     connect(ui->btnRight, SIGNAL(clicked()), this, SLOT(moveBaseRight()));
 
+//Tool selection button
     connect(ui->btnGroupRvizTools,SIGNAL(buttonClicked(int)),this,SLOT(setCurrentTool(int)));
 
+//Sliders for Linear and Angular velocity
     connect(ui->sliderLinearVel, SIGNAL(valueChanged(int)),this,SLOT(setRobotVelocity()));
     connect(ui->sliderAngularVel, SIGNAL(valueChanged(int)),this,SLOT(setRobotVelocity()));
 
- }
+}
 
 void FallRiskGUI::initDisplayWidgets()
 {
@@ -210,7 +209,7 @@ void FallRiskGUI::keyPressEvent(QKeyEvent *event)
 
 void FallRiskGUI::distanceSubCallback(const std_msgs::Float32::ConstPtr& msg)
 {
-//    ROS_INFO("distance: %f",msg->data);
+    //    ROS_INFO("distance: %f",msg->data);
     QLocale english(QLocale::English, QLocale::UnitedStates);
     QString qdist = english.toString(msg->data, 'f', 2);
     ui->lbDistance->setText(qdist);
@@ -345,17 +344,17 @@ void FallRiskGUI::setVideo(QLabel* label, cv_bridge::CvImagePtr cv_ptr){
 
 void FallRiskGUI::setRobotVelocity()
 {
-    linearVelocity = ui->sliderLinearVel->value()*(LIN_VEL_MAX-LIN_VEL_MIN)/100+LIN_VEL_MIN;
-    ROS_INFO("Linear velocity:%f",linearVelocity);
-    angularVelocity = ui->sliderAngularVel->value()*(ANG_VEL_MAX-ANG_VEL_MIN)/100+ANG_VEL_MIN;
-    ROS_INFO("Angular velocity:%f",angularVelocity);
+    linearVelocity_ = ui->sliderLinearVel->value()*(LIN_VEL_MAX-LIN_VEL_MIN)/100+LIN_VEL_MIN;
+    ROS_INFO("Linear velocity:%f",linearVelocity_);
+    angularVelocity_ = ui->sliderAngularVel->value()*(ANG_VEL_MAX-ANG_VEL_MIN)/100+ANG_VEL_MIN;
+    ROS_INFO("Angular velocity:%f",angularVelocity_);
 }
 
 void FallRiskGUI::moveBaseForward()
 {
     ROS_INFO("move forward");
 
-    moveBaseCmd.linear.x=linearVelocity;
+    moveBaseCmd.linear.x=linearVelocity_;
     moveBaseCmd.linear.y=0;
     moveBaseCmd.linear.z=0;
 
@@ -370,7 +369,7 @@ void FallRiskGUI::moveBaseBackward()
 {
     ROS_INFO("move backward");
 
-    moveBaseCmd.linear.x=-linearVelocity;
+    moveBaseCmd.linear.x=-linearVelocity_;
     moveBaseCmd.linear.y=0;
     moveBaseCmd.linear.z=0;
 
@@ -391,7 +390,7 @@ void FallRiskGUI::moveBaseLeft()
 
     moveBaseCmd.angular.x=0;
     moveBaseCmd.angular.y=0;
-    moveBaseCmd.angular.z=angularVelocity;
+    moveBaseCmd.angular.z=angularVelocity_;
 
     sendMoveBaseCmd();
 }
@@ -406,7 +405,7 @@ void FallRiskGUI::moveBaseRight()
 
     moveBaseCmd.angular.x=0;
     moveBaseCmd.angular.y=0;
-    moveBaseCmd.angular.z=-angularVelocity;
+    moveBaseCmd.angular.z=-angularVelocity_;
 
     sendMoveBaseCmd();
 }
@@ -437,7 +436,7 @@ void FallRiskGUI::setCurrentTool(int btnID)
     if(btnID == -2)
     {
         ROS_INFO("Interact Tool Selected");
-        toolManager_->setCurrentTool(interactTool_);        
+        toolManager_->setCurrentTool(interactTool_);
     }
     else if(btnID == -3)
     {
@@ -461,10 +460,10 @@ void FallRiskGUI::setCurrentTool(int btnID)
         toolManager_->setCurrentTool(pointTool_);
     }
 
-    changeToolBtnStatus(btnID);
+    changeToolButtonStatus(btnID);
 }
 
-void FallRiskGUI::changeToolBtnStatus(int btnID)
+void FallRiskGUI::changeToolButtonStatus(int btnID)
 {
     ui->btnRvizInteract->setFlat(true);
     ui->btnRvizMeasure->setFlat(true);

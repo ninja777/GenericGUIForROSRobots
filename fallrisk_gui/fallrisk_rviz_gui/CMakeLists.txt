@@ -25,11 +25,13 @@ add_definitions(${QT_DEFINITIONS})
 
 set(HEADER_FILES 
   src/fallrisk_gui.h
+  src/configurationreader.h
 )
 
 set(SOURCE_FILES
   src/main.cpp
   src/fallrisk_gui.cpp
+  src/configurationreader.cpp
   ${MOC_FILES}
 )
 
@@ -113,6 +115,7 @@ include_directories(
 #   src/${PROJECT_NAME}/fallrisk_rviz_gui.cpp
 # )
 
+#add_executable(fallrisk_gui src/main.cpp)
 add_executable(fallrisk_gui ${SOURCE_FILES} ${MOC_SRC_H} ${MOC_GUI_H})
 target_link_libraries(fallrisk_gui ${QT_LIBRARIES} ${catkin_LIBRARIES})
 
