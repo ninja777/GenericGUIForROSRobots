@@ -6,7 +6,7 @@
 #include <functional>
 #include <cctype>
 #include <locale>
-
+#include <map>
 
 class ConfigurationReader
 {
@@ -14,10 +14,11 @@ public:
     ConfigurationReader();
     ConfigurationReader(const char*);
     char delimiter_;
+    std::map<std::string, std::string> currentTopics;
 
 private:
-    void readConfiguration();
-    void readConfiguration(const char*);
+    std::map<std::string, std::string> readConfiguration();
+    std::map<std::string, std::string> readConfiguration(const char*);
 };
 
 
