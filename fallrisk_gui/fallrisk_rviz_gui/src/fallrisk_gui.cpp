@@ -3,6 +3,10 @@
 #include <iostream>
 #include "rviz/view_manager.h"
 #include "rviz/tool_manager.h"
+#include "rviz/properties/property_tree_model.h"
+#include <math.h>
+#include <stdio.h>
+#include "configurationreader.h"
 
 
 FallRiskGUI::FallRiskGUI(QWidget *parent) :
@@ -35,20 +39,34 @@ FallRiskGUI::~FallRiskGUI()
 
 void FallRiskGUI::initVariables()
 {
-//Assign topic names to corresponding variables
-    fixedFrame_ =  QString("/base_link");
-    mapTopic_ = QString("/map");
-    imageTopic_ = QString("/camera/rgb/image_raw"); ;
-    pointCloudTopic_=QString("/camera/depth/points");
-    octomapTopic_=QString( "/occupied_cells_vis_array" );
-    baseSensorTopic_=QString("/mobile_base/sensors/core");
-    velocityTopic_=QString("/mobile_base/commands/velocity");
+    //Read the configuration file
+//    ConfigurationReader configfile("config.ini");
+
+    //Assign topic names to corresponding variables
+//    fixedFrame_     = configfile.default_topics.at("fixedFrame");
+//    mapTopic_       = configfile.default_topics.at("mapTopic");
+//    imageTopic_     = configfile.default_topics.at("imageTopic");
+//    pointCloudTopic_= configfile.default_topics.at("pointCloudTopic");
+//    octomapTopic_   = configfile.default_topics.at("octomapTopic");
+//    baseSensorTopic_= configfile.default_topics.at("baseSensorTopic");
+//    velocityTopic_  = configfile.default_topics.at("velocityTopic");
+//    odometryTopic_  = configfile.default_topics.at("odometryTopic");
+
+    fixedFrame_     = QString("/base_link");
+    mapTopic_       = QString("/map");
+    imageTopic_     = QString("/camera/rgb/image_raw"); ;
+    pointCloudTopic_= QString("/camera/depth/points");
+    octomapTopic_   = QString("/occupied_cells_vis_array");
+    baseSensorTopic_= QString("/mobile_base/sensors/core");
+    velocityTopic_  = QString("/mobile_base/commands/velocity");
+    odometryTopic_  = QString("/odom");
+    robotType_      = QString("Turtlebot");
 
 //Setup the publishers and subscribers
-    moveBaseCmdPub = nh_.advertise<geometry_msgs::Twist>(velocityTopic_.toStdString(),1);
-    centerDistSub = nh_.subscribe("/distance/image_center_dist",1,&FallRiskGUI::distanceSubCallback,this);
+    moveBaseCmdPub   = nh_.advertise<geometry_msgs::Twist>(velocityTopic_.toStdString(),1);
     baseSensorStatus = nh_.subscribe(baseSensorTopic_.toStdString(),1,&FallRiskGUI::baseStatusCheck,this);
-    liveVideoSub = it_.subscribe(imageTopic_.toStdString(),1,&FallRiskGUI::liveVideoCallback,this,image_transport::TransportHints("compressed"));
+    liveVideoSub     = it_.subscribe(imageTopic_.toStdString(),1,&FallRiskGUI::liveVideoCallback,this,image_transport::TransportHints("compressed"));
+    odomSub          = nh_.subscribe(odometryTopic_.toStdString(), 1, &FallRiskGUI::odomSubCallback, this);
 
 //Set the default speed
     setRobotVelocity();
@@ -58,18 +76,17 @@ void FallRiskGUI::initVariables()
 void FallRiskGUI::initActionsConnections()
 {
 //Connect the teleop buttons
-    connect(ui->btnUp, SIGNAL(clicked()), this, SLOT(moveBaseForward()));
-    connect(ui->btnDown, SIGNAL(clicked()), this, SLOT(moveBaseBackward()));
-    connect(ui->btnLeft, SIGNAL(clicked()), this, SLOT(moveBaseLeft()));
+    connect(ui->btnUp,    SIGNAL(clicked()), this, SLOT(moveBaseForward()));
+    connect(ui->btnDown,  SIGNAL(clicked()), this, SLOT(moveBaseBackward()));
+    connect(ui->btnLeft,  SIGNAL(clicked()), this, SLOT(moveBaseLeft()));
     connect(ui->btnRight, SIGNAL(clicked()), this, SLOT(moveBaseRight()));
 
 //Tool selection button
     connect(ui->btnGroupRvizTools,SIGNAL(buttonClicked(int)),this,SLOT(setCurrentTool(int)));
 
 //Sliders for Linear and Angular velocity
-    connect(ui->sliderLinearVel, SIGNAL(valueChanged(int)),this,SLOT(setRobotVelocity()));
+    connect(ui->sliderLinearVel,  SIGNAL(valueChanged(int)),this,SLOT(setRobotVelocity()));
     connect(ui->sliderAngularVel, SIGNAL(valueChanged(int)),this,SLOT(setRobotVelocity()));
-
 }
 
 void FallRiskGUI::initDisplayWidgets()
@@ -100,7 +117,7 @@ void FallRiskGUI::initDisplayWidgets()
     ROS_ASSERT( mapDisplay_ != NULL );
 
     mapDisplay_->subProp( "Topic" )->setValue( mapTopic_ );
-    mapManager_->createDisplay( "rviz/RobotModel", "Turtlebot", true );
+    mapManager_->createDisplay( "rviz/RobotModel", robotType_, true );
 
     // Initialize GUI elements for main panel
     renderPanel_ = new rviz::RenderPanel();
@@ -124,7 +141,7 @@ void FallRiskGUI::initDisplayWidgets()
     mainDisplay_->subProp( "Style" )->setValue( "Boxes" );
     mainDisplay_->subProp("Alpha")->setValue(0.5);
     manager_->createDisplay( "rviz/Grid", "Grid", true );
-    manager_->createDisplay( "rviz/RobotModel", "Turtlebot", true );
+    manager_->createDisplay( "rviz/RobotModel", robotType_, true );
 
     octomapDisplay_ = manager_->createDisplay( "rviz/MarkerArray", "Octomap view", true );
     ROS_ASSERT( octomapDisplay_ != NULL );
@@ -183,37 +200,38 @@ void FallRiskGUI::keyPressEvent(QKeyEvent *event)
     {
     case Qt::Key_W:
         moveBaseForward();
-        //        sendMoveBaseCmd();
         ROS_INFO("key W pressed");
         break;
+
     case Qt::Key_A:
         moveBaseLeft();
-        //        sendMoveBaseCmd();
         ROS_INFO("key A pressed");
         break;
+
     case Qt::Key_D:
         moveBaseRight();
-        //        sendMoveBaseCmd();
         ROS_INFO("key D pressed");
         break;
+
     case Qt::Key_S:
         moveBaseBackward();
-        //        sendMoveBaseCmd();
         ROS_INFO("key S pressed");
         break;
+
     default:
         QWidget::keyPressEvent(event);
         break;
     }
 }
 
-void FallRiskGUI::distanceSubCallback(const std_msgs::Float32::ConstPtr& msg)
+void FallRiskGUI::odomSubCallback(const nav_msgs::Odometry& msg)
 {
-    //    ROS_INFO("distance: %f",msg->data);
-    QLocale english(QLocale::English, QLocale::UnitedStates);
-    QString qdist = english.toString(msg->data, 'f', 2);
-    ui->lbDistance->setText(qdist);
+     xPos=msg.pose.pose.position.x;
+     yPos=msg.pose.pose.position.y;
+     ROS_INFO("odom received: %f, %f", xPos, yPos);
+
 }
+
 
 void FallRiskGUI::baseStatusCheck(const kobuki_msgs::SensorState::ConstPtr& msg)
 {
@@ -303,7 +321,6 @@ void FallRiskGUI::baseStatusCheck(const kobuki_msgs::SensorState::ConstPtr& msg)
 
 void FallRiskGUI::liveVideoCallback(const sensor_msgs::ImageConstPtr& msg)
 {
-
     cv_bridge::CvImagePtr cv_ptr, cv_ptr_big;
     try
     {
@@ -317,25 +334,24 @@ void FallRiskGUI::liveVideoCallback(const sensor_msgs::ImageConstPtr& msg)
     }
     //  convert cv image into RGB image and resize it to the size of available layout
     setVideo(ui->liveVideoLabel,cv_ptr);
-    setVideo(ui->lbLiveVideoBig,cv_ptr_big);
+//    setVideo(ui->lbLiveVideoBig,cv_ptr_big);
 }
 
 void FallRiskGUI::setVideo(QLabel* label, cv_bridge::CvImagePtr cv_ptr){
     cv::Mat RGBImg;
     QLabel* liveVideoLabel = label;
-
     int height = liveVideoLabel->height()-1;
-    int width =  liveVideoLabel->width()-1;
+    int width  =  liveVideoLabel->width()-1;
 
     if(liveVideoLabel->height()-1 >= (liveVideoLabel->width()-1)*3/4)
-        height= (liveVideoLabel->width()-1)*3/4;
+        height = (liveVideoLabel->width()-1)*3/4;
     else
-        width = (liveVideoLabel->height()-1)*4/3;
+        width  = (liveVideoLabel->height()-1)*4/3;
 
     cv::cvtColor(cv_ptr->image,RGBImg,CV_BGR2RGB);
     cv::resize(RGBImg,RGBImg,cvSize(width,height));
 
-    //  convert RGB image into QImage and publish that on the label for livevideo
+    //  convert RGB image into QImage and display that on the label for livevideo
     QImage qImage_= QImage((uchar*) RGBImg.data, RGBImg.cols, RGBImg.rows, RGBImg.cols*3, QImage::Format_RGB888);
     liveVideoLabel->setPixmap(QPixmap::fromImage(qImage_));
     liveVideoLabel->show();
@@ -353,8 +369,7 @@ void FallRiskGUI::setRobotVelocity()
 void FallRiskGUI::moveBaseForward()
 {
     ROS_INFO("move forward");
-
-    moveBaseCmd.linear.x=linearVelocity_;
+//    moveBaseCmd.linear.x=linearVelocity;
     moveBaseCmd.linear.y=0;
     moveBaseCmd.linear.z=0;
 
@@ -362,6 +377,38 @@ void FallRiskGUI::moveBaseForward()
     moveBaseCmd.angular.y=0;
     moveBaseCmd.angular.z=0;
 
+    moveBaseCmd.linear.x=0;
+    float origx=xPos;
+    float origy=yPos;
+    float currx=xPos;
+    float curry=yPos;
+    float time=2.0;
+    float curr_time=0;
+    float prop2=0;
+    float distance=0.2;
+    step=0.1;
+    //float total=abs(hypot((currx-origx), (curry-origy)));
+    while (curr_time<(time+0.05))
+    {
+//    currx=odom.pose.pose.position.x;
+//    curry=odom.pose.pose.position.y;
+    total=abs(hypot((currx-origx), (curry-origy)));
+        //ROS_INFO("current: %f, %f, %f", currx, curry, total);
+    prop2=abs(total/distance);
+        prop=curr_time/time;
+    if (prop<0.25){
+        moveBaseCmd.linear.x=4*linearVelocity_*prop+0.1;
+    }
+    else {
+        if (prop>0.75){
+            moveBaseCmd.linear.x=linearVelocity_*(4-prop/0.25)+0.1;
+        }
+    }
+        sendMoveBaseCmd();
+        curr_time=curr_time+step;
+        //moveBaseCmd.linear.x=moveBaseCmd.linear.x+0.01;
+    }
+    moveBaseCmd.linear.x=0;
     sendMoveBaseCmd();
 }
 
@@ -369,7 +416,7 @@ void FallRiskGUI::moveBaseBackward()
 {
     ROS_INFO("move backward");
 
-    moveBaseCmd.linear.x=-linearVelocity_;
+    moveBaseCmd.linear.x=0;
     moveBaseCmd.linear.y=0;
     moveBaseCmd.linear.z=0;
 
@@ -377,6 +424,24 @@ void FallRiskGUI::moveBaseBackward()
     moveBaseCmd.angular.y=0;
     moveBaseCmd.angular.z=0;
 
+    float time=0.5;
+    float curr_time=0;
+    step=0.1;
+    while (curr_time<(time+0.05))
+    {
+        prop=curr_time/time;
+    if (prop<0.25){
+        moveBaseCmd.linear.x=-4*linearVelocity_*prop-0.1;
+    }
+    else {
+        if (prop>0.75){
+            moveBaseCmd.linear.x=-linearVelocity_*(4-prop/0.25)-0.1;
+        }
+    }
+        sendMoveBaseCmd();
+        curr_time=curr_time+step;
+    }
+    moveBaseCmd.linear.x=0;
     sendMoveBaseCmd();
 }
 
@@ -390,8 +455,26 @@ void FallRiskGUI::moveBaseLeft()
 
     moveBaseCmd.angular.x=0;
     moveBaseCmd.angular.y=0;
-    moveBaseCmd.angular.z=angularVelocity_;
+    moveBaseCmd.angular.z=0;
 
+    float time=0.5;
+    float curr_time=0;
+    step=0.1;
+    while (curr_time<(time+0.05))
+    {
+        prop=curr_time/time;
+    if (prop<0.25){
+        moveBaseCmd.angular.z=4*linearVelocity_*prop+0.1;
+    }
+    else {
+        if (prop>0.75){
+            moveBaseCmd.angular.z=linearVelocity_*(4-prop/0.25)+0.1;
+        }
+    }
+        sendMoveBaseCmd();
+        curr_time=curr_time+step;
+    }
+    moveBaseCmd.angular.z=0;
     sendMoveBaseCmd();
 }
 
@@ -405,20 +488,40 @@ void FallRiskGUI::moveBaseRight()
 
     moveBaseCmd.angular.x=0;
     moveBaseCmd.angular.y=0;
-    moveBaseCmd.angular.z=-angularVelocity_;
+    moveBaseCmd.angular.z=0;
 
+    float time=0.5;
+    float curr_time=0;
+    step=0.1;
+    while (curr_time<(time+0.05))
+    {
+        prop=curr_time/time;
+    if (prop<0.25){
+        moveBaseCmd.angular.z=-4*linearVelocity_*prop-0.1;
+    }
+    else {
+        if (prop>0.75){
+            moveBaseCmd.angular.z=-linearVelocity_*(4-prop/0.25)-0.1;
+        }
+    }
+        sendMoveBaseCmd();
+        curr_time=curr_time+step;
+    }
+    moveBaseCmd.angular.z=0;
     sendMoveBaseCmd();
 }
 
 void FallRiskGUI::sendMoveBaseCmd()
 {
-    if(ros::ok() && moveBaseCmdPub)
+  // ros::Rate r(10);
+   float step=0.1;
+   if(ros::ok() && moveBaseCmdPub)
     {
         moveBaseCmdPub.publish(moveBaseCmd);
         ROS_INFO("move base cmd sent");
     }
+    ros::Duration(step).sleep();
 }
-
 
 void FallRiskGUI::initTools(){
     toolManager_ = manager_->getToolManager();

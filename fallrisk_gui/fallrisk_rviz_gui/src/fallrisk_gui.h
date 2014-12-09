@@ -26,6 +26,8 @@
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
+#include <move_base_msgs/MoveBaseGoal.h>
+#include <nav_msgs/Odometry.h>
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
@@ -70,7 +72,7 @@ private:
     void initVariables();
     void initTools();
     void sendMoveBaseCmd();
-//    void getDistance();
+    //    void getDistance();
 
 
 private Q_SLOTS:
@@ -83,63 +85,72 @@ private Q_SLOTS:
     void setCurrentTool(int btnID);
 
 private:
-//rviz APIs
+    //rviz APIs
 
-  rviz::VisualizationManager* manager_;
-  rviz::VisualizationManager* mapManager_;
+    rviz::VisualizationManager* manager_;
+    rviz::VisualizationManager* mapManager_;
 
-  rviz::RenderPanel* renderPanel_;
-  rviz::RenderPanel* mapRenderPanel_ ;
-  rviz::RenderPanel* imagePanel_;
+    rviz::RenderPanel* renderPanel_;
+    rviz::RenderPanel* mapRenderPanel_ ;
+    rviz::RenderPanel* imagePanel_;
 
-  rviz::ViewManager* viewManager_;
-  rviz::ViewController* viewController_ ;
+    rviz::ViewManager* viewManager_;
+    rviz::ViewController* viewController_ ;
 
-  rviz::Display* mainDisplay_;
-//  rviz::Display* imageDisplay_;
-  rviz::Display* octomapDisplay_;
-  rviz::Display* mapDisplay_ ;
+    rviz::Display* mainDisplay_;
+    //  rviz::Display* imageDisplay_;
+    rviz::Display* octomapDisplay_;
+    rviz::Display* mapDisplay_ ;
 
-  rviz::ToolManager* toolManager_ ;
+    rviz::ToolManager* toolManager_ ;
 
-  rviz::Tool* measureTool_ ;
-  rviz::Tool* pointTool_ ;
-  rviz::Tool* interactTool_;
-  rviz::Tool* setGoalTool_;
-  rviz::Tool* setInitialPoseTool_;
+    rviz::Tool* measureTool_ ;
+    rviz::Tool* pointTool_ ;
+    rviz::Tool* interactTool_;
+    rviz::Tool* setGoalTool_;
+    rviz::Tool* setInitialPoseTool_;
 
 private:
-//ros
-  ros::NodeHandle nh_;
-  ros::Publisher moveBaseCmdPub;
-  ros::Subscriber centerDistSub;
-  ros::Subscriber baseSensorStatus;
+    //ros
+    ros::NodeHandle nh_;
+    ros::Publisher moveBaseCmdPub;
+    ros::Subscriber centerDistSub;
+    ros::Subscriber baseSensorStatus;
+    ros::Subscriber odomSub;
 
-  image_transport::ImageTransport it_;
-  image_transport::Subscriber liveVideoSub;
+    image_transport::ImageTransport it_;
+    image_transport::Subscriber liveVideoSub;
+    //tf::TransformListener listener;
+    geometry_msgs::Twist moveBaseCmd;
+    geometry_msgs::Point position;
+    float linearVelocity_;
+    float angularVelocity_;
+    float prop;
+    float total;
+    float currx;
+    float curry;
+    float xPos;
+    float yPos;
+    float aPos;
+    float step;
 
-  geometry_msgs::Twist moveBaseCmd;
+    void baseStatusCheck(const kobuki_msgs::SensorState::ConstPtr& msg);
+    void liveVideoCallback(const sensor_msgs::ImageConstPtr &msg);
+    void setVideo(QLabel* label, cv_bridge::CvImagePtr cv_ptr);
+    void odomSubCallback(const nav_msgs::Odometry& msg);
+    void changeToolButtonStatus(int btnID);
 
+    QString fixedFrame_;
+    QString mapTopic_;
+    QString imageTopic_;
+    QString pointCloudTopic_;
+    QString octomapTopic_;
+    QString baseSensorTopic_;
+    QString velocityTopic_;
+    QString odometryTopic_;
+    QString robotType_;
 
-  float linearVelocity_;
-  float angularVelocity_;
-
-  void distanceSubCallback(const std_msgs::Float32::ConstPtr& msg);
-  void baseStatusCheck(const kobuki_msgs::SensorState::ConstPtr& msg);
-  void liveVideoCallback(const sensor_msgs::ImageConstPtr &msg);
-  void setVideo(QLabel* label, cv_bridge::CvImagePtr cv_ptr);
-
-  void changeToolButtonStatus(int btnID);
-
-  QString fixedFrame_;
-  QString mapTopic_;
-  QString imageTopic_;
-  QString pointCloudTopic_;
-  QString octomapTopic_;
-  QString baseSensorTopic_;
-  QString velocityTopic_;
-
-  QLabel* status_label_;
+    QLabel* status_label_;
 
 };
 

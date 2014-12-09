@@ -33,25 +33,30 @@
 // initializes ROS, creates a QApplication, creates the top-level
 // widget (of type "MyViz"), shows it, and runs the Qt event loop.
 
-#include <QApplication>
-#include <ros/ros.h>
+//#include <QApplication>
+//#include <ros/ros.h>
 
-#include "fallrisk_gui.h"
+//#include "fallrisk_gui.h"
 
+#include "configurationreader.h"
 
 int main(int argc, char **argv)
 {
-  if( !ros::isInitialized() )
-  {
-    ros::init( argc, argv, "myviz", ros::init_options::AnonymousName );
-  }
+//  if( !ros::isInitialized() )
+//  {
+//    ros::init( argc, argv, "myviz", ros::init_options::AnonymousName );
+//  }
 
-  QApplication app( argc, argv );
+//  QApplication app( argc, argv );
 
-  FallRiskGUI* fallrisk_gui = new FallRiskGUI();
-  fallrisk_gui->show();
+//  FallRiskGUI* fallrisk_gui = new FallRiskGUI();
+//  fallrisk_gui->show();
 
-  app.exec();
+//  app.exec();
 
-  delete fallrisk_gui;
+//  delete fallrisk_gui;
+
+ConfigurationReader reader("config.ini");
+return 1;
+
 }
