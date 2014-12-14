@@ -1,3 +1,4 @@
 <launch>
-  <include file="$(find fallrisk_simulator)/launch/turtlesim_playground.launch"></include>
+  <include file="$(find turtlebot_sim)/launch/turtlesim_playground.launch"></include>
+  <include file="$(find fallrisk_octomap)/launch/octomap.launch"></include>  
 </launch>
