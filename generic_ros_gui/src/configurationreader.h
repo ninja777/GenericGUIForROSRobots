@@ -1,7 +1,7 @@
 #ifndef CONFIGURATIONREADER_H
 #define CONFIGURATIONREADER_H
 
-#include<iostream>
+#include <iostream>
 #include <algorithm>
 #include <functional>
 #include <cctype>
