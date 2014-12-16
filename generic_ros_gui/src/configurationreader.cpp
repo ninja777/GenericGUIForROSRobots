@@ -9,13 +9,11 @@
 #include <boost/tokenizer.hpp>
 
 
-ConfigurationReader::ConfigurationReader()
-{
+ConfigurationReader::ConfigurationReader(){
     delimiter_ = '=';
 }
 
-ConfigurationReader::ConfigurationReader(const char *file_name)
-{
+ConfigurationReader::ConfigurationReader(const char *file_name){
     readConfiguration(file_name);
 }
 
